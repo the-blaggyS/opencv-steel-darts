@@ -139,7 +139,7 @@ def get_diff(image, next_image):
     diff_image = cv2.absdiff(image, next_image)
 
     # filter noise from image distortions
-    kernel = np.ones((5, 5), np.float32) / 25
+    kernel = np.ones((3, 3), np.float32) / 9
     blurred_diff_image = cv2.filter2D(diff_image, -1, kernel)
 
     return blurred_diff_image
