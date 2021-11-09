@@ -171,7 +171,7 @@ def filter_corners(corners):
 def filter_corners_line(corners, rows, cols):
     # TODO: get multiple but better lines, then filter for the strongest
     # TODO for get_real_location: select line on height of right most corner instead of right most corner
-    [vx, vy, x, y] = cv2.fitLine(corners, cv2.DIST_HUBER, 0, 0.1, 0.1)
+    [vx, vy, x, y] = cv2.fitLine(corners, cv2.DIST_WELSCH, 5.0, 0.1, 0.1)
     left_y = int((-x * vy / vx) + y)
     right_y = int(((cols - x) * vy / vx) + y)
 
