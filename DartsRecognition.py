@@ -43,8 +43,8 @@ def get_darts(cam_r, calibration_data_r, count=3):
             dbg_next_image = cv2.cvtColor(next_image_r, cv2.COLOR_GRAY2RGB)
 
             # dart outside?
-            if corners_r.size < 40:
-                print("### dart not detected")
+            if corners_r.size < 40 or len(corners_r) == 640:
+                print("dart not detected")
                 continue
 
             # filter corners
