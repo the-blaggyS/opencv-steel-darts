@@ -24,51 +24,10 @@ class Application(Frame):
         self.pack()
 
 
-# def detected_dart_callback(breaker, dart_base, dart_multiplier):
-#
-#     score = dart_base * dart_multiplier
-#     game.get_current_player().score -= score
-#
-#     # update entry fields
-#     if breaker == 1:
-#         GUI.dart1entry.insert(10, str(score))
-#     elif breaker == 2:
-#         GUI.dart2entry.insert(10, str(score))
-#     elif breaker == 3:
-#         GUI.dart3entry.insert(10, str(score))
-#
-#     # update player score field
-#     if game.current_player == 0:
-#         GUI.e1.delete(0, 'end')
-#         GUI.e1.insert(10, game.get_current_player().score)
-#     elif game.current_player == 1:
-#         GUI.e2.delete(0, 'end')
-#         GUI.e2.insert(10, game.get_current_player().score)
-#
-#     # calculate final score
-#     dart_entries = [GUI.dart1entry, GUI.dart2entry, GUI.dart3entry]
-#     scores_sum = 0
-#
-#     for dart_entry in dart_entries:
-#         score_str = dart_entry.get()
-#         try:
-#             score_int = int(score_str)
-#         except ValueError:
-#             score_int = 0
-#         scores_sum += score_int
-#
-#     # update final score field
-#     if game.get_current_player().score <= 1 or \
-#        game.get_current_player().score == 0 and not dart_multiplier == 2:
-#         GUI.finalentry.delete(0, 'end')
-#         GUI.finalentry.insert(10, str(0))
-#         game.get_current_player().score += scores_sum
-#     else:
-#         GUI.finalentry.delete(0, 'end')
-#         GUI.finalentry.insert(10, scores_sum)
-
-
 def game_on():
+    global game
+    game = Game()
+
     player1 = Player('Lucas')
     player1_label.insert(10, player1.name)
     game.players.append(player1)
@@ -92,7 +51,6 @@ def game_on():
     gui.dart2entry.delete(0, 'end')
     gui.dart3entry.delete(0, 'end')
 
-    # t = Thread(target=get_darts, args=(cam_r, calibration_data_r, detected_dart_callback))
     t = Thread(target=game_loop)
     t.start()
 
