@@ -4,13 +4,10 @@ import cv2
 import numpy as np
 
 from DartsMapping import get_dart_region, get_transformed_location
-from Draw import draw_board
 from MathFunctions import dist, closest_point
 
 
 def get_darts(cam_r, calibration_data_r, count=3):
-
-    dbg_map = dbg_load_map()
 
     breaker = 0
 
@@ -112,7 +109,6 @@ def get_darts(cam_r, calibration_data_r, count=3):
             print(dart_info.base, dart_info.multiplier)
             cv2.imwrite(f'dbg_dart{breaker}.jpg', dbg_diff_image)
             cv2.imwrite(f'dbg_corners{breaker}.jpg', dbg_next_image)
-            dbg_draw_dart(dbg_map, dart_info, dart_loc)
 
             yield dart_info
 
@@ -226,28 +222,3 @@ def get_real_location(corners_final, mount):
 def map_location_to_line(location_of_dart, line):
     point_on_line = closest_point(*line[0], *line[1], *location_of_dart)
     return point_on_line
-
-
-def dbg_load_map():
-    image = cv2.imread('dbg_map.jpg')
-    if image is None:
-        image = dbg_generate_map()
-    return image
-
-
-def dbg_generate_map():
-    image = np.zeros((800, 800, 3), dtype='uint8')
-    image = draw_board(image)
-    return image
-
-
-def dbg_draw_dart(dbg_map, dart_info, dart_loc):
-    score = f'{dart_info.base}x{dart_info.multiplier}'
-    # dart location
-    cv2.circle(dbg_map, list(map(int, dart_loc)), 2, (0, 255, 0), 2, 8)
-    cv2.circle(dbg_map, list(map(int, dart_loc)), 6, (0, 255, 0), 1, 8)
-    # score text
-    cv2.rectangle(dbg_map, (600, 700), (800, 800), (0, 0, 0), -1)
-    cv2.putText(dbg_map, score, (600, 750), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2, 8)
-    # window
-    cv2.imwrite('dbg_map.jpg', dbg_map)
