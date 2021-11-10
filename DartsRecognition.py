@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 
 from DartsMapping import get_dart_region, get_transformed_location
-from MathFunctions import dist, closest_point
 from Draw import draw_board
+from MathFunctions import dist, closest_point
 
 
 def get_darts(cam_r, calibration_data_r, count=3):
@@ -71,7 +71,6 @@ def get_darts(cam_r, calibration_data_r, count=3):
                 cv2.circle(dbg_next_image, corner.ravel(), 1, (0, 255, 0))  # green
             for corner in corners_final_r:
                 cv2.circle(dbg_next_image, corner.ravel(), 1, (0, 0, 255))  # red
-            cv2.line(dbg_next_image, *line_r, (255, 0, 255))
 
             _, binary_diff_r = cv2.threshold(diff_image_r, 60, 255, 0)
 
@@ -86,6 +85,7 @@ def get_darts(cam_r, calibration_data_r, count=3):
 
             # get final darts location
             try:
+                location_of_dart_r = ()
                 corners_final_old_r = np.zeros((1, 1))
                 while (corners_final_old_r != corners_final_r).any():
                     corners_final_old_r = corners_final_r
@@ -174,7 +174,7 @@ def filter_corners(corners):
             corners_to_filter_out.append(idx)
 
     corners_new = np.delete(corners, [corners_to_filter_out], axis=0)  # delete corners to form new array
-    return corners_new
+    return corners_new, (mean_x, mean_y)
 
 
 def filter_corners_line(corners, rows, cols, dist_func):
