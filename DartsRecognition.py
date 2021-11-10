@@ -173,7 +173,7 @@ def filter_corners(corners):
 
 
 def filter_corners_line(corners, rows, cols, dist_func):
-    [vx, vy, x, y] = cv2.fitLine(corners, dist_func, 0, 0.1, 0.1)  # 5.0 if dist_func == cv2.DIST_WELSCH else 0
+    [vx, vy, x, y] = cv2.fitLine(corners, dist_func, 2.9 if dist_func == cv2.DIST_WELSCH else 0, 0.1, 0.1)  # 5.0 if dist_func == cv2.DIST_WELSCH else 0
     left_y = int((-x * vy / vx) + y)
     right_y = int(((cols - x) * vy / vx) + y)
 
