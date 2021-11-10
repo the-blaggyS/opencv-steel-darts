@@ -42,12 +42,12 @@ def average(darts):
     avg = sum / len(darts)
     print(avg)
 
-    
+
 if __name__ == '__main__':
     darts_dict = read_log()
     darts_map = generate_map()
     for dart in darts_dict:
         draw_dart(darts_map, dart['loc_x'], dart['loc_y'])
-    cv2.imwrite('DartsHeatMap.jpg', darts_map)
+    cv2.imwrite('darts_map.jpg', darts_map)
     count_scores(darts_dict)
     average(darts_dict)
