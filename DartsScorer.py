@@ -1,6 +1,10 @@
+import csv
+import os.path
+import uuid
+from datetime import datetime
 from threading import Thread
-from tkinter import *
 from time import sleep
+from tkinter import *
 
 from Calibration import calibrate
 from Classes import CalibrationData, GUIDef, Game, Player
@@ -99,6 +103,7 @@ def game_loop():
             darts.append(dart)
             handle_event(darts)
 
+        log_dart(darts)
         sleep(5)
         setup_next_round()
 
@@ -156,6 +161,32 @@ def setup_next_round():
     elif game.current_player == 1:
         gui.e2.configure(bg='light green')
         gui.e1.configure(bg='white')
+
+
+def log_dart(darts):
+    darts_log = 'darts_log.csv'
+
+    def generate_dict(dart):
+        return {
+            'id': uuid.uuid4(),
+            'date': datetime.now(),
+            'game_id': game.id,
+            'player_name': game.get_current_player().name,
+            'base': dart.base,
+            'multiplier': dart.multiplier,
+            'loc_x': dart.location[0],
+            'loc_y': dart.location[1]
+        }
+
+    def write_csv(dart_dicts, header=False):
+        field_names = ['id', 'date', 'game_id', 'player_name', 'base', 'multiplier', 'loc_x', 'loc_y']
+        with open(darts_log, 'a') as csv_file:
+            csv_writer = csv.DictWriter(csv_file, field_names)
+            if header:
+                csv_writer.writeheader()
+            csv_writer.writerows(dart_dicts)
+
+    write_csv([generate_dict(dart) for dart in darts], header=(not os.path.isfile(darts_log)))
 
 
 def calibration_gui():
