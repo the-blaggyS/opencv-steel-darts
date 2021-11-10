@@ -60,7 +60,10 @@ def get_darts(cam_r, calibration_data_r, count=3):
 
             # find left and rightmost corners
             rows, cols = diff_image_r.shape[:2]
-            corners_final_r, line_r = filter_corners_line(corners_filtered_r, rows, cols)
+            corners_filtered_r, line_r = filter_corners_line(corners_filtered_r, rows, cols, cv2.DIST_WELSCH)
+            cv2.line(dbg_next_image, *line_r, (127, 0, 127))
+            corners_final_r, line_r = filter_corners_line(corners_filtered_r, rows, cols, cv2.DIST_HUBER)
+            cv2.line(dbg_next_image, *line_r, (255, 0, 255))
 
             for corner in corners_r:
                 cv2.circle(dbg_next_image, corner.ravel(), 1, (255, 0, 0))  # blue
@@ -174,10 +177,8 @@ def filter_corners(corners):
     return corners_new
 
 
-def filter_corners_line(corners, rows, cols):
-    # TODO: get multiple but better lines, then filter for the strongest
-    # TODO for get_real_location: select line on height of right most corner instead of right most corner
-    [vx, vy, x, y] = cv2.fitLine(corners, cv2.DIST_WELSCH, 5.0, 0.1, 0.1)
+def filter_corners_line(corners, rows, cols, dist_func):
+    [vx, vy, x, y] = cv2.fitLine(corners, dist_func, 0, 0.1, 0.1)  # 5.0 if dist_func == cv2.DIST_WELSCH else 0
     left_y = int((-x * vy / vx) + y)
     right_y = int(((cols - x) * vy / vx) + y)
 
