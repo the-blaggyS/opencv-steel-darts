@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 
 # distance point to line
@@ -27,9 +28,24 @@ def dist(x1, y1, x2, y2, x3, y3):  # x3,y3 is the point
     # can just return the squared distance instead
     # (i.e. remove the sqrt) to gain a little performance
 
-    dist = math.sqrt(dx * dx + dy * dy)
+    distance = math.sqrt(dx**2 + dy**2)
 
-    return dist
+    return distance
+
+
+# closest point on line to point
+def closest_point(x1, y1, x2, y2, x3, y3):  # x3,y3 is the point
+
+    line1 = np.array((x1, y1))
+    line2 = np.array((x2, y2))
+    point = np.array((x3, y3))
+
+    n = line2 - line1
+    v = point - line1
+
+    z = line1 + n * (np.dot(v, n) / np.dot(n, n))
+
+    return z
 
 
 def intersect_line_circle(center, radius, p1, p2):
