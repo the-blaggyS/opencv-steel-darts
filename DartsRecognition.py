@@ -23,12 +23,14 @@ def get_darts(cam_r, calibration_data_r, count=3):
         binary_diff_r = get_binary_diff(image_r, next_image_r)
 
         num_changed_pixels = cv2.countNonZero(binary_diff_r)
-        if num_changed_pixels > 0:
-            print(num_changed_pixels)
+        # if num_changed_pixels > 0:
+        #     print(num_changed_pixels)
 
         if min_threshold < num_changed_pixels < max_threshold and breaker < count:
             # wait for camera vibrations
             time.sleep(0.5)
+
+            print(f'\n### Dart {breaker+1} ###')
 
             # filter noise
             next_image_r = get_gray(cam_r)
@@ -52,14 +54,14 @@ def get_darts(cam_r, calibration_data_r, count=3):
 
             # dart outside?
             if corners_filtered_r.size < 30:
-                print("### dart not detected")
+                print("dart not detected")
                 continue
 
             # find left and rightmost corners
             rows, cols = diff_image_r.shape[:2]
-            corners_filtered_r, line_r = filter_corners_line(corners_filtered_r, rows, cols, cv2.DIST_WELSCH)
+            corners_tmp, line_r = filter_corners_line(corners_filtered_r, rows, cols, cv2.DIST_WELSCH)
             cv2.line(dbg_next_image, *line_r, (127, 0, 127))
-            corners_final_r, line_r = filter_corners_line(corners_filtered_r, rows, cols, cv2.DIST_HUBER)
+            corners_final_r, line_r = filter_corners_line(corners_tmp, rows, cols, cv2.DIST_HUBER)
             cv2.line(dbg_next_image, *line_r, (255, 0, 255))
 
             for corner in corners_r:
@@ -73,12 +75,12 @@ def get_darts(cam_r, calibration_data_r, count=3):
 
             # check if it was really a dart
             if cv2.countNonZero(binary_diff_r) > max_threshold * 2:
-                print('too many changes')
+                print('threshold exceeded')
                 continue
 
             # dart was found -> increase counter
             breaker += 1
-            print("Dart detected", breaker)
+            print("Dart detected")
 
             # get final darts location
             try:
@@ -104,9 +106,9 @@ def get_darts(cam_r, calibration_data_r, count=3):
                 continue
 
             dart_info = dart_info_r
-            dart_loc = dart_loc_r
+            dart_info.location = dart_loc_r
 
-            print(dart_info.base, dart_info.multiplier)
+            # print(dart_info.base, dart_info.multiplier)
             cv2.imwrite(f'dbg_dart{breaker}.jpg', dbg_diff_image)
             cv2.imwrite(f'dbg_corners{breaker}.jpg', dbg_next_image)
 
