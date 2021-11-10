@@ -86,9 +86,9 @@ def get_darts(cam_r, calibration_data_r, count=3):
             try:
                 location_of_dart_r = get_real_location(corners_final_r, 'right')
                 # map point to line
-                location_of_dart_r = map_location_to_line((location_of_dart_r.item(0), location_of_dart_r.item(1)), line_r).astype(int)
-                cv2.circle(dbg_next_image, location_of_dart_r.ravel(), 1, (255, 0, 255), 1)
-                cv2.circle(dbg_next_image, location_of_dart_r.ravel(), 20, (255, 0, 255), 1)
+                # location_of_dart_r = map_location_to_line((location_of_dart_r.item(0), location_of_dart_r.item(1)), line_r).astype(int)
+                cv2.circle(dbg_next_image, location_of_dart_r.ravel()[:2], 1, (255, 0, 255), 1)
+                cv2.circle(dbg_next_image, location_of_dart_r.ravel()[:2], 20, (255, 0, 255), 1)
                 # check for the location of the dart with the calibration
                 dart_loc_r = get_transformed_location(location_of_dart_r.item(0), location_of_dart_r.item(1), calibration_data_r)
                 # detect region and score
