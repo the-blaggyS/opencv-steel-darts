@@ -46,6 +46,7 @@ class DartDef:
         self.magnitude = -1
         self.angle = -1
         self.corners = -1
+        self.location = (-1, -1)
 
 
 class Ellipse:
