@@ -216,7 +216,7 @@ def get_real_location(corners_final, mount):
         if distance < 20:
             neighbours += 1
 
-    if neighbours < 3:
+    if neighbours < 5:
         print("### used different location due to noise!")
         corners_final = np.delete(corners_final, [corners_to_filter_out], axis=0)  # delete corner w/o neighbours
 
