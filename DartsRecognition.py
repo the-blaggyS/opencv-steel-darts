@@ -49,7 +49,9 @@ def get_darts(cam_r, calibration_data_r, count=3):
                 continue
 
             # filter corners
-            corners_filtered_r = filter_corners(corners_r)
+            corners_filtered_r, mean = filter_corners(corners_r)
+            mean = tuple(map(int, mean))
+            cv2.rectangle(dbg_next_image, (mean[0]-180, mean[1]-120), (mean[0]+180, mean[1]+120), (255, 0, 0))
 
             # dart outside?
             if corners_filtered_r.size < 30:
