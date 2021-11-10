@@ -152,6 +152,7 @@ def get_corners(image):
     # number of features to track is a distinctive feature
     corners = cv2.goodFeaturesToTrack(image, 640, 0.0008, 1, mask=None, blockSize=3, useHarrisDetector=1, k=0.06)  # k=0.08
     print('corners:', len(corners))
+    corners = corners[:, 0, :]
     corners = np.int0(corners)
     return corners
 
