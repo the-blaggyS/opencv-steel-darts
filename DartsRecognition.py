@@ -84,11 +84,7 @@ def get_darts(cam_r, calibration_data_r, count=3):
 
             # get final darts location
             try:
-                location_of_dart_r = ()
-                corners_final_old_r = np.zeros((1, 1))
-                while (corners_final_old_r != corners_final_r).any():
-                    corners_final_old_r = corners_final_r
-                    location_of_dart_r, corners_final_r = get_real_location(corners_final_r, "right")
+                location_of_dart_r = get_real_location(corners_final_r, 'right')
                 # map point to line
                 location_of_dart_r = map_location_to_line((location_of_dart_r.item(0), location_of_dart_r.item(1)), line_r).astype(int)
                 cv2.circle(dbg_next_image, location_of_dart_r.ravel(), 1, (255, 0, 255), 1)
@@ -193,32 +189,33 @@ def filter_corners_line(corners, rows, cols, dist_func):
 
 
 def get_real_location(corners_final, mount):
-    if mount == "right":
-        loc = np.argmax(corners_final, axis=0)
-    else:
-        loc = np.argmin(corners_final, axis=0)
+    while True:
+        if mount == "right":
+            loc = np.argmax(corners_final[:, 0], axis=0)
+        else:
+            loc = np.argmin(corners_final[:, 0], axis=0)
+        possible_loc = corners_final[loc]
+        possible_loc_x = possible_loc.item(0)
+        possible_loc_y = possible_loc.item(1)
 
-    possible_loc = corners_final[loc]
-    possible_loc_x = possible_loc.item(0)
-    possible_loc_y = possible_loc.item(1)
+        # check if dart location has neighbouring corners (if not -> continue)
+        neighbours = 0
+        corners_to_filter_out = []
+        for idx, corner in enumerate(corners_final):
+            if (corner == possible_loc).all():  # you're not your own neighbour
+                corners_to_filter_out.append(idx)
+                continue
+            corner_x, corner_y = corner.ravel()
+            distance = abs(possible_loc_x - corner_x) + abs(possible_loc_y - corner_y)
+            if distance < 20:
+                neighbours += 1
 
-    # check if dart location has neighbouring corners (if not -> continue)
-    neighbours = 0
-    corners_to_filter_out = []
-    for idx, corner in enumerate(corners_final):
-        if (corner == possible_loc).all():  # you're not your own neighbour
-            corners_to_filter_out.append(idx)
+        if neighbours < 3:
+            print("### used different location due to noise!")
+            corners_final = np.delete(corners_final, [corners_to_filter_out], axis=0)  # delete corner w/o neighbours
             continue
-        corner_x, corner_y = corner.ravel()
-        distance = abs(possible_loc_x - corner_x) + abs(possible_loc_y - corner_y)
-        if distance < 20:
-            neighbours += 1
 
-    if neighbours < 5:
-        print("### used different location due to noise!")
-        corners_final = np.delete(corners_final, [corners_to_filter_out], axis=0)  # delete corner w/o neighbours
-
-    return possible_loc, corners_final
+        return possible_loc
 
 
 def map_location_to_line(location_of_dart, line):
