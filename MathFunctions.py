@@ -6,7 +6,7 @@ def dist(x1, y1, x2, y2, x3, y3):  # x3,y3 is the point
     px = x2 - x1
     py = y2 - y1
 
-    something = px * px + py * py
+    something = px**2 + py**2
 
     u = ((x3 - x1) * px + (y3 - y1) * py) / float(something)
 
@@ -38,14 +38,14 @@ def intersect_line_circle(center, radius, p1, p2):
     caX = center[0] - p1[0]
     caY = center[1] - p1[1]
 
-    a = baX * baX + baY * baY
+    a = baX**2 + baY**2
     bBy2 = baX * caX + baY * caY
-    c = caX * caX + caY * caY - radius * radius
+    c = caX**2 + caY**2 - radius**2
 
     pBy2 = bBy2 / a
     q = c / a
 
-    disc = pBy2 * pBy2 - q
+    disc = pBy2**2 - q
     if disc < 0:
         return False, None, False, None
 
