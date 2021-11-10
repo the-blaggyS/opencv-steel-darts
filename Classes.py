@@ -1,10 +1,12 @@
 import math
+import uuid
 
 import numpy as np
 
 
 class Game:
     def __init__(self):
+        self.id = uuid.uuid4()
         self.start_score = 301
         self.players = []
         self.current_player = 0
