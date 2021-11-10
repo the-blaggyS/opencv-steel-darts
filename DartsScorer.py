@@ -70,9 +70,11 @@ class Application(Frame):
 
 def game_on():
     player1 = Player('Lucas')
+    player1_label.insert(10, player1.name)
     game.players.append(player1)
 
     # player2 = Player('Player2')
+    # player1_label.insert(10, player2.name)
     # game.players.append(player2)
 
     for player in game.players:
