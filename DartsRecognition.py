@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from DartsMapping import get_dart_region, get_transformed_location
-from MathFunctions import dist
+from MathFunctions import dist, closest_point
 from Draw import draw_board
 
 
@@ -87,6 +87,10 @@ def get_darts(cam_r, calibration_data_r, count=3):
                 while (corners_final_old_r != corners_final_r).any():
                     corners_final_old_r = corners_final_r
                     location_of_dart_r, corners_final_r = get_real_location(corners_final_r, "right")
+                # map point to line
+                location_of_dart_r = map_location_to_line((location_of_dart_r.item(0), location_of_dart_r.item(1)), line_r).astype(int)
+                cv2.circle(dbg_next_image, location_of_dart_r.ravel(), 1, (255, 0, 255), 1)
+                cv2.circle(dbg_next_image, location_of_dart_r.ravel(), 20, (255, 0, 255), 1)
                 # check for the location of the dart with the calibration
                 dart_loc_r = get_transformed_location(location_of_dart_r.item(0), location_of_dart_r.item(1), calibration_data_r)
                 # detect region and score
@@ -216,6 +220,11 @@ def get_real_location(corners_final, mount):
         corners_final = np.delete(corners_final, [corners_to_filter_out], axis=0)  # delete corner w/o neighbours
 
     return possible_loc, corners_final
+
+
+def map_location_to_line(location_of_dart, line):
+    point_on_line = closest_point(*line[0], *line[1], *location_of_dart)
+    return point_on_line
 
 
 def dbg_load_map():
