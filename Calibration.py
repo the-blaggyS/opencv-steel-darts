@@ -347,5 +347,6 @@ def auto_canny(image):
 
 if __name__ == '__main__':
     print('Welcome to darts!')
-    cam_r = VideoStream(src=1).start()
+    cam_r = VideoStream(src=1)
+    cam_r.start()
     calibrate(cam_r, mount='right')

@@ -10,6 +10,7 @@ class Game:
         self.start_score = 301
         self.players = []
         self.current_player = 0
+        self.is_running = True
 
     def next_player(self):
         self.current_player += 1
@@ -47,6 +48,7 @@ class DartDef:
         self.angle = -1
         self.corners = -1
         self.location = (-1, -1)
+        self.correctly_detected = True
 
 
 class Ellipse:
