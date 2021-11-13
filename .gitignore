@@ -1,6 +1,5 @@
 *.pyc
 .idea
 *.pkl
-dbg*.jpg
-darts_map.jpg
-darts_log.csv
+tmp/
+Videos/*

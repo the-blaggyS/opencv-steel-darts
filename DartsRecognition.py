@@ -105,8 +105,8 @@ def get_darts(cam_r, calibration_data_r, count=3):
             dart_info.location = dart_loc_r
 
             # print(dart_info.base, dart_info.multiplier)
-            cv2.imwrite(f'dbg_dart{breaker}.jpg', dbg_diff_image)
-            cv2.imwrite(f'dbg_corners{breaker}.jpg', dbg_next_image)
+            cv2.imwrite(f'tmp/dbg_dart{breaker}.jpg', dbg_diff_image)
+            cv2.imwrite(f'tmp/dbg_corners{breaker}.jpg', dbg_next_image)
 
             yield dart_info
 

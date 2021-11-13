@@ -8,7 +8,7 @@ from Draw import draw_board
 
 
 def read_log():
-    darts_log = 'darts_log.csv'
+    darts_log = 'tmp/darts_log.csv'
     with open(darts_log, 'r') as csv_file:
         csv_reader = csv.DictReader(csv_file)
         rows = [row for row in csv_reader]

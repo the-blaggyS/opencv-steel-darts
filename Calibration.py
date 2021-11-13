@@ -15,8 +15,8 @@ original_image = np.empty_like
 
 def calibrate(cam, mount):
     calibration_data_file = {
-        'right': 'calibration_data_r.pkl',
-        'left': 'calibration_data_l.pkl'
+        'right': 'tmp/calibration_data_r.pkl',
+        'left': 'tmp/calibration_data_l.pkl'
     }
 
     try:
