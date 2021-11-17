@@ -111,6 +111,8 @@ def main(darts):
     correctly_detected(darts)
     calculate_playing_time(today(darts))
     calculate_playing_time(darts)
+    count_scores(today([dart for dart in darts if int(dart['base']) in (5, 20, 1) and dart['correctly_detected'] == 'True']))
+    # draw_darts_map(today([dart for dart in darts if int(dart['base']) in (5, 20, 1) and dart['correctly_detected'] == 'True']))
 
 
 if __name__ == '__main__':
