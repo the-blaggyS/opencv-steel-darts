@@ -7,15 +7,23 @@ from time import sleep
 from tkinter import *
 
 from Calibration import calibrate
-from Classes import CalibrationData, GUIDef, Game, Player, DartDef
+from Classes import CalibrationData, GUIDef, Game, Player, Dart
 from DartsRecognition import get_darts
+from GameModes import *
 from VideoCapture import VideoStream
 
 cam_r = VideoStream(src=1)
 calibration_data_r = CalibrationData()
 
-game = Game()
-darts = []
+
+def create_game():
+    player_names = ['Lucas']
+    players = [Player(name) for name in player_names]
+
+    return Game(XX1(301, double_out=True), players)
+
+
+game = create_game()
 
 
 class Application(Frame):
@@ -27,52 +35,38 @@ class Application(Frame):
 
 def start_game():
     global game
-    game = Game()
-
-    player1 = Player('Lucas')
-    player1_label.delete(0, 'end')
-    player1_label.insert(10, player1.name)
-    game.players.append(player1)
-
-    # player2 = Player('Player2')
-    # player2_label.delete(0, 'end')
-    # player2_label.insert(10, player2.name)
-    # game.players.append(player2)
-
-    for player in game.players:
-        player.score = game.start_score
+    game = create_game()
 
     gui.e1.configure(bg='light green')
-
-    gui.e1.delete(0, 'end')
-    gui.e2.delete(0, 'end')
-    gui.e1.insert(10, game.players[0].score)
-    if len(game.players) == 2:
-        gui.e2.insert(10, game.players[1].score)
+    for score_field in score_fields:
+        score_field.delete(0, 'end')
+    for idx, player in enumerate(game.players):
+        score_fields[idx].insert(10, player.score)
+    for dart_entry in dart_entries:
+        dart_entry.delete(0, 'end')
     gui.final_entry.delete(0, 'end')
-    gui.dart1entry.delete(0, 'end')
-    gui.dart2entry.delete(0, 'end')
-    gui.dart3entry.delete(0, 'end')
 
     t = Thread(target=game_loop)
     t.start()
 
 
 def game_loop():
-    global darts
     cam_r.start()
+    sleep(1)  # time to init cam
 
-    while game.is_running:
-        darts = []
+    while not game.is_finished():
+        game.get_current_player().turns.append([])
+        current_turn = game.get_current_player().turns[-1]
         round_complete = False
 
         while not round_complete and game.is_running:
-            dart = get_darts(cam_r, calibration_data_r, len(darts)+1)
+            dart = get_darts(cam_r, calibration_data_r, len(current_turn)+1)
             if dart is None:
                 break
             else:
-                darts.append(dart)
-                round_complete = handle_event()
+                current_turn.append(dart)
+                update_entry_fields()
+                round_complete = game.game_mode.is_turn_finished(game.get_current_player())
 
         update_final_score_field()
 
@@ -88,78 +82,55 @@ def game_loop():
     cam_r.stop()
 
 
-def handle_event():
-    latest_dart = darts[-1]
+def update_entry_fields():
+    current_turn = game.get_current_player().turns[-1]
+    latest_dart = current_turn[-1]
     score = latest_dart.base * latest_dart.multiplier
 
-    # update entry fields
-    if len(darts) == 1:
-        gui.dart1entry.insert(10, str(score))
-    elif len(darts) == 2:
-        gui.dart2entry.insert(10, str(score))
-    elif len(darts) == 3:
-        gui.dart3entry.insert(10, str(score))
-
-    score_sum = sum([dart.base * dart.multiplier for dart in darts])
-    new_score = game.get_current_player().score - score_sum
-    return len(darts) == 3 or new_score < 2  # round finished after three darts or when score < 2
+    # update entry field
+    dart_entries[len(current_turn)-1].insert(10, str(score))
 
 
 def update_final_score_field():
-    score_sum = sum([dart.base * dart.multiplier for dart in darts])
-    new_score = game.get_current_player().score - score_sum
+    current_turn = game.get_current_player().turns[-1]
+    score_sum = sum([dart.base * dart.multiplier for dart in current_turn])
+
+    # check if turn was valid
+    if not game.game_mode.is_turn_valid(game.get_current_player()):
+        score_sum = 0
 
     # update final score field
-    if new_score > 1 or new_score == 0 and darts[-1].multiplier == 2:
-        gui.final_entry.delete(0, 'end')
-        gui.final_entry.insert(10, score_sum)
-    else:
-        gui.final_entry.delete(0, 'end')
-        gui.final_entry.insert(10, str(0))
+    gui.final_entry.delete(0, 'end')
+    gui.final_entry.insert(10, str(score_sum))
 
 
 def update_player_score():
-    score_sum = sum([dart.base * dart.multiplier for dart in darts])
-    new_score = game.get_current_player().score - score_sum
-
-    if new_score > 1 or new_score == 0 and darts[-1].multiplier == 2:
-        score_sum = sum([dart.base * dart.multiplier for dart in darts])
-        new_score = game.get_current_player().score - score_sum
-
+    current_turn = game.get_current_player().turns[-1]
+    # check if turn was valid
+    if game.game_mode.is_turn_valid(game.get_current_player()):
         # player score
-        game.get_current_player().score = new_score
-
+        game.game_mode.update_player_score(game.get_current_player())
         update_player_score_field()
-
-        if game.get_current_player().score == 0:
-            game.is_running = False
 
 
 def update_player_score_field():
-    if game.current_player == 0:
-        gui.e1.delete(0, 'end')
-        gui.e1.insert(10, game.get_current_player().score)
-    elif game.current_player == 1:
-        gui.e2.delete(0, 'end')
-        gui.e2.insert(10, game.get_current_player().score)
+    score_field = score_fields[game.current_player]
+    score_field.delete(0, 'end')
+    score_field.insert(10, game.get_current_player().score)
 
 
 def setup_next_round():
     # clear dart scores
+    for dart_entry in dart_entries:
+        dart_entry.delete(0, 'end')
     gui.final_entry.delete(0, 'end')
-    gui.dart1entry.delete(0, 'end')
-    gui.dart2entry.delete(0, 'end')
-    gui.dart3entry.delete(0, 'end')
 
     game.next_player()
 
     # update ui
-    if game.current_player == 0:
-        gui.e1.configure(bg='light green')
-        gui.e2.configure(bg='black')
-    elif game.current_player == 1:
-        gui.e2.configure(bg='light green')
-        gui.e1.configure(bg='black')
+    score_field = score_fields[game.current_player]
+    score_field.configure(bg='light green')
+    score_field.configure(bg='black')
 
 
 def log_dart():
@@ -187,37 +158,51 @@ def log_dart():
                 csv_writer.writeheader()
             csv_writer.writerows(dart_dicts)
 
-    write_csv([generate_dict(dart) for dart in darts], header=(not os.path.isfile(darts_log)))
+    current_turn = game.get_current_player().turns[-1]
+    write_csv([generate_dict(dart) for dart in current_turn], header=(not os.path.isfile(darts_log)))
 
 
 # correct dart score with binding -> press return to change
 def dart_correction(_):
-    for idx, entry in enumerate([gui.dart1entry, gui.dart2entry, gui.dart3entry]):
-        if idx >= len(darts):
-            darts.append(DartDef())
-        dart = darts[idx]
+    current_turn = game.get_current_player().turns[-1]
+    for idx, entry in enumerate(dart_entries):
 
-        multipliers = {'D': 2, 'T': 3}
-        input = entry.get()
-        split = re.findall(r'\D+|\d+', input)
-        if len(split) == 2:
-            multiplier = multipliers[split[0]]
-            base = int(split[1])
+        if idx < len(current_turn):
+            dart = current_turn[idx]
         else:
-            multiplier = 1
-            base = int(split[0])
+            dart = None
 
-        corrected_score = multiplier * int(base)
-        original_score = dart.base * dart.multiplier
-        if corrected_score != original_score:
-            dart.base = corrected_score
-            dart.multiplier = 1
+        try:
+            base, multiplier = entry_to_dart(entry)
+        except IndexError:
+            continue
+
+        if dart is None:
+            dart = Dart(base, multiplier, -1, -1)
+            current_turn.append(dart)
+        elif base != dart.base or multiplier != dart.multiplier:
+            dart.base = base
+            dart.multiplier = multiplier
             dart.correctly_detected = False
 
     # update final score field
-    score_sum = sum([dart.base * dart.multiplier for dart in darts])
+    score_sum = sum([dart.base * dart.multiplier for dart in current_turn])
     gui.final_entry.delete(0, 'end')
     gui.final_entry.insert(10, score_sum)
+
+
+def entry_to_dart(entry):
+    text = entry.get()
+    multipliers = {'D': 2, 'T': 3}
+    split = re.findall(r'\D+|\d+', text)
+    if len(split) == 2:
+        multiplier = multipliers[split[0]]
+        base = int(split[1])
+    else:
+        multiplier = 1
+        base = int(split[0])
+
+    return base, multiplier
 
 
 def stop_game():
@@ -255,12 +240,12 @@ background.create_window(20, 300, window=quit_btn, anchor='nw')
 player1_label = Entry(root, fg='white', font="Helvetica 32 bold", width=7)
 player1_label.bind("<Return>", lambda: (game.players[0].set_name(player1_label.get())))
 background.create_window(250, 20, window=player1_label, anchor='nw')
-player1_label.insert(10, "Player 1")
+player1_label.insert(10, game.players[0].name if len(game.players) >= 1 else "Player 1")
 
 player2_label = Entry(root, fg='white', font="Helvetica 32 bold", width=7)
 player2_label.bind("<Return>", lambda: (game.players[1].set_name(player2_label.get())))
 background.create_window(400, 20, window=player2_label, anchor='nw')
-player2_label.insert(10, "Player 2")
+player2_label.insert(10, game.players[1].name if len(game.players) >= 2 else "Player 2")
 
 gui.e1 = Entry(root, fg='white', font="Helvetica 44 bold", width=4)
 background.create_window(250, 80, window=gui.e1, anchor='nw')
@@ -296,6 +281,9 @@ background.create_window(300, 310, window=final_label, anchor='nw')
 
 gui.final_entry = Entry(root, font="Helvetica 20 bold", width=3)
 background.create_window(350, 310, window=gui.final_entry, anchor='nw')
+
+dart_entries = [gui.dart1entry, gui.dart2entry, gui.dart3entry]
+score_fields = [gui.e1, gui.e2]
 
 app = Application(master=root)
 app.mainloop()
