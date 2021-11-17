@@ -3,7 +3,7 @@ import math
 import cv2
 import numpy as np
 
-from Classes import DartDef
+from Classes import Dart
 
 
 def get_transformed_location(x_coord, y_coord, calibration_data):
@@ -22,8 +22,6 @@ def get_dart_region(dart_loc, calibration_data):
     height = 800
     width = 800
 
-    dart_info = DartDef()
-
     # find the magnitude and angle of the dart
     vx = dart_loc[0] - width / 2
     vy = height / 2 - dart_loc[1]
@@ -31,37 +29,39 @@ def get_dart_region(dart_loc, calibration_data):
     # reference angle for atan2 conversion
     ref_angle = 81
 
-    dart_info.magnitude = math.sqrt(math.pow(vx, 2) + math.pow(vy, 2))
-    dart_info.angle = math.fmod(((math.atan2(vy, vx) * 180 / math.pi) + 360 - ref_angle), 360)
+    magnitude = math.sqrt(math.pow(vx, 2) + math.pow(vy, 2))
+    angle = math.fmod(((math.atan2(vy, vx) * 180 / math.pi) + 360 - ref_angle), 360)
 
-    angle_diff_mul = int(dart_info.angle / 18)
+    angle_diff_mul = int(angle / 18)
 
-    dart_info_base = [20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10, 6, 13, 4, 18, 1]
+    dart_base = [20, 5, 12, 9, 14, 11, 8, 16, 7, 19, 3, 17, 2, 15, 10, 6, 13, 4, 18, 1]
     try:
-        dart_info.base = dart_info_base[angle_diff_mul]
+        base = dart_base[angle_diff_mul]
     except IndexError:
-        dart_info.base = -1
+        base = -1
 
     # Calculating multiplier (and special cases for Bull's Eye):
     for i in range(0, len(calibration_data.ring_radius)):
         # Find the ring that encloses the dart
-        if dart_info.magnitude <= calibration_data.ring_radius[i]:
+        if magnitude <= calibration_data.ring_radius[i]:
             if i == 0:  # Double Bull's Eye
-                dart_info.base = 25
-                dart_info.multiplier = 2
+                base = 25
+                multiplier = 2
             elif i == 1:  # Single Bull's Eye
-                dart_info.base = 25
-                dart_info.multiplier = 1
+                base = 25
+                multiplier = 1
             elif i == 3:  # Triple
-                dart_info.multiplier = 3
+                multiplier = 3
             elif i == 5:  # Double
-                dart_info.multiplier = 2
-            elif i == 2 or i == 4:  # Single
-                dart_info.multiplier = 1
+                multiplier = 2
+            else:  # Single
+                multiplier = 1
             break
     else:  # miss
-        print('miss', dart_info.magnitude)
-        dart_info.base = 0
-        dart_info.multiplier = 0
+        print('miss', magnitude)
+        base = 0
+        multiplier = 0
 
-    return dart_info
+    dart = Dart(base, multiplier, magnitude, angle)
+
+    return dart
