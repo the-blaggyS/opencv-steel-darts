@@ -5,12 +5,15 @@ import numpy as np
 
 
 class Game:
-    def __init__(self):
+    def __init__(self, game_mode, players):
         self.id = uuid.uuid4()
-        self.start_score = 301
-        self.players = []
+        self.game_mode = game_mode
+        self.players = players
         self.current_player = 0
         self.is_running = True
+
+        for player in self.players:
+            player.score = self.game_mode.get_start_score()
 
     def next_player(self):
         self.current_player += 1
@@ -19,15 +22,28 @@ class Game:
     def get_current_player(self):
         return self.players[self.current_player]
 
+    def is_finished(self):
+        if not self.is_running:
+            return True
+        else:
+            return self.game_mode.is_game_finished(self.players)
+
 
 class Player:
     def __init__(self, name):
         self.name = name
         self.score = 0
-        self.darts = 0
+        self.is_in = False
+        self.turns = []
 
     def set_name(self, name):
         self.name = name
+
+    def num_darts(self):
+        num = 0
+        for turn in self.turns:
+            num += len(turn)
+        return num
 
 
 class GUIDef:
@@ -40,13 +56,13 @@ class GUIDef:
         self.final_entry = []
 
 
-class DartDef:
-    def __init__(self):
-        self.base = -1
-        self.multiplier = -1
-        self.magnitude = -1
-        self.angle = -1
-        self.corners = -1
+class Dart:
+    def __init__(self, base, multiplier, magnitude, angle):
+        self.base = base
+        self.multiplier = multiplier
+        self.magnitude = magnitude
+        self.angle = angle
+        self.corners = []
         self.location = (-1, -1)
         self.correctly_detected = True
 
@@ -79,14 +95,10 @@ class Line:
 class CalibrationData:
     def __init__(self):
         # for perspective transform
-        self.top = []
-        self.bottom = []
-        self.left = []
-        self.right = []
-        self.points = []
-        # radii of the rings, there are 6 in total
+        self.points = [(200, 150), (600, 450), (600, 150), (200, 450)]
+        self.offsets = [[0, 0], [0, 0], [0, 0], [0, 0]]
         self.ring_radius = [14, 32, 194, 214, 320, 340]
         self.center_dartboard = (400, 400)
         self.sector_angle = 2 * math.pi / 20
-        self.dst_points = []
+        self.dst_points = [12, 2, 17, 7]
         self.transformation_matrix = [[]]
