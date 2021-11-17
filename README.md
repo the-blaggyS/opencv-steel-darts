@@ -47,6 +47,3 @@ The transformation works like that (reading from right to left):
 ## Lighting and Camera placement
 
 ![ellipse-circle](Bilder/Lighting.jpg)
-
-## License
-GNU General Public License v3.0
