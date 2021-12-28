@@ -128,9 +128,10 @@ def setup_next_round():
     game.next_player()
 
     # update ui
+    for score_field in score_fields:
+        score_field.configure(bg='black')
     score_field = score_fields[game.current_player]
     score_field.configure(bg='light green')
-    score_field.configure(bg='black')
 
 
 def log_dart():
@@ -207,6 +208,7 @@ def entry_to_dart(entry):
 
 def stop_game():
     global game
+    game.is_running = False
     game = None
     cam_r.stop()
 
