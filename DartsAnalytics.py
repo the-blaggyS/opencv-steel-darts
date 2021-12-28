@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from dateutil import parser
+from pyheatmap.heatmap import HeatMap
 
 from Draw import draw_board
 
@@ -102,9 +103,18 @@ def calculate_playing_time(darts):
     print(timedelta(seconds=total_playing_time) / max(timedelta(seconds=(parser.parse(darts[-1]['date'])-parser.parse(darts[0]['date'])).total_seconds()).days, 1))
 
 
-    ty_res = time.gmtime(playing_time)
-    res = time.strftime('%H:%M:%S', ty_res)
-    print(res)
+def generate_heatmap(darts):
+    data = [(int(float(dart['loc_x'])), int(float(dart['loc_y']))) for dart in darts]
+    print(len(data))
+
+    darts_map = generate_map()
+    cv2.imwrite('tmp/base.jpg', darts_map)
+
+    heatmap = HeatMap(data, base='tmp/base.jpg', width=800, height=800)
+    heatmap.clickmap(save_as='tmp/hit.png')
+    heatmap.heatmap(save_as='tmp/heat.png')
+
+    plt.show()
 
 
 def main(darts):
@@ -118,6 +128,7 @@ def main(darts):
     calculate_playing_time(darts)
     count_scores(today([dart for dart in darts if int(dart['base']) in (5, 20, 1) and dart['correctly_detected'] == 'True']))
     # draw_darts_map(today([dart for dart in darts if int(dart['base']) in (5, 20, 1) and dart['correctly_detected'] == 'True']))
+    generate_heatmap([dart for dart in darts if int(dart['base']) != 0 and dart['correctly_detected'] == 'True'])
 
 
 if __name__ == '__main__':
