@@ -1,9 +1,9 @@
 import collections
 import csv
-import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 from dateutil import parser
 
@@ -85,17 +85,22 @@ def correctly_detected(darts):
 
 def calculate_playing_time(darts):
     print('\n\n### Playing Time ###')
-    playing_time = 0
-    for i in range(len(darts)-1):
-        dart1 = darts[i]
-        dart2 = darts[i+1]
-        dt1 = parser.parse(dart1['date'])
-        dt2 = parser.parse(dart2['date'])
-        dt_diff = (dt2 - dt1).total_seconds()
-        if dt_diff < 2*60:
-            playing_time += dt_diff
-        else:
-            playing_time += 30
+    total_playing_time = 0
+    first_dart_of_game = darts[0]
+    for idx, dart in enumerate(darts):
+        if dart['game_id'] != first_dart_of_game['game_id']:
+            # Calculate playing time of game
+            last_dart_of_game = darts[idx-1]
+            start_time_of_game = parser.parse(first_dart_of_game['date'])
+            end_time_of_game = parser.parse(last_dart_of_game['date'])
+            duration_of_game = (end_time_of_game - start_time_of_game).total_seconds()
+            total_playing_time += duration_of_game
+            # Start new game
+            first_dart_of_game = dart
+    print(timedelta(seconds=total_playing_time))
+    print(timedelta(seconds=(parser.parse(darts[-1]['date'])-parser.parse(darts[0]['date'])).total_seconds()).days)
+    print(timedelta(seconds=total_playing_time) / max(timedelta(seconds=(parser.parse(darts[-1]['date'])-parser.parse(darts[0]['date'])).total_seconds()).days, 1))
+
 
     ty_res = time.gmtime(playing_time)
     res = time.strftime('%H:%M:%S', ty_res)
