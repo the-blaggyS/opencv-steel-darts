@@ -17,8 +17,8 @@ def get_darts(cam_r, calibration_data_r, breaker):
 
     print(f'\n### Dart {breaker} ###')
 
-    min_threshold = 50
-    max_threshold = 15_000
+    min_threshold = 300
+    max_threshold = 30_000
 
     image_r, rgb_r = get_gray(cam_r)
 
@@ -43,32 +43,29 @@ def get_darts(cam_r, calibration_data_r, breaker):
             # get corners
             corners_r = get_corners(diff_image_r)
 
-            # dart outside?
-            if corners_r.size < 40 or len(corners_r) == 640:
-                print("Dart not detected")
+            # dart detected?
+            if corners_r.size < 40 or corners_r.size == 640 * 2:
+                print("Dart not detected (pre-processing)")
+                print('corners:', len(corners_r))
                 continue
 
             # filter corners
-            close_corners_r = filter_distant_corners(corners_r)
-
-            # dart outside?
-            if close_corners_r.size < 30:
-                print("Dart not detected")
-                continue
-
-            # filter corners
+            # close_corners_r = filter_corners_of_flight(corners_r)
+            close_corners_r = corners_r
             corners_on_line_r = filter_corners_on_line(close_corners_r)
-            mask_center = get_real_location(corners_on_line_r, mount='right')
-            # diff in mask based on rbg image
-            diff_rgb_r = get_diff(rgb_r, next_rgb_r)
-            diff_image_for_mask_r = cv2.cvtColor(diff_rgb_r, cv2.COLOR_RGB2GRAY)
-            # get corners in mask
-            mask = get_mask(mask_center)
-            corners_in_mask = get_corners_in_mask(diff_image_for_mask_r, mask)
 
-            # dart outside?
-            if corners_in_mask is None:
-                print('No corners in mask found')
+            # dart detected?
+            if corners_on_line_r.size < 1:
+                print("Dart not detected (post-processing)")
+                print('corners:', len(corners_on_line_r))
+                if DEBUG:
+                    # copy debug images
+                    dbg_diff_image = diff_image_r.copy()
+                    # draw all different corners
+                    dbg_draw_corners(corners_r, close_corners_r, corners_on_line_r)
+                    # write debug images
+                    cv2.imwrite(f'tmp/dbg_dart{breaker}.jpg', dbg_diff_image)
+                    cv2.imwrite(f'tmp/dbg_corners{breaker}.jpg', dbg_next_image)
                 continue
 
             # check if it was really a dart
@@ -78,7 +75,7 @@ def get_darts(cam_r, calibration_data_r, breaker):
                 break
 
             # get final darts location
-            location_of_dart_r = get_real_location(corners_in_mask, 'right')
+            location_of_dart_r = get_real_location(corners_on_line_r, 'right')
             transformed_location_r = get_transformed_location(*location_of_dart_r, calibration_data_r)
             dart_info_r = get_dart_region(transformed_location_r, calibration_data_r)
 
@@ -93,7 +90,7 @@ def get_darts(cam_r, calibration_data_r, breaker):
                 # copy debug images
                 dbg_diff_image = diff_image_r.copy()
                 # draw all different corners
-                dbg_draw_corners(corners_r, close_corners_r, corners_on_line_r, corners_in_mask)
+                dbg_draw_corners(corners_r, close_corners_r, corners_on_line_r)
                 # draw darts location
                 cv2.circle(dbg_next_image, location_of_dart_r.ravel(), 1, (255, 0, 255), 1)
                 cv2.circle(dbg_next_image, location_of_dart_r.ravel(), 20, (255, 0, 255), 1)
@@ -115,6 +112,7 @@ def get_darts(cam_r, calibration_data_r, breaker):
         # if player enters zone - break loop
         elif num_changed_pixels >= max_threshold:
             print('Player entered zone')
+            print(num_changed_pixels)
             break
 
 
@@ -138,107 +136,105 @@ def get_diff(image, next_image):
 
 
 def get_blurred_diff(image, next_image):
-    # filter noise from image distortions
-    m = n = 9
-    kernel = np.ones((m, n), np.float32) / (m * n)
-    blurred_image = cv2.filter2D(image, -1, kernel)
-    blurred_next_image = cv2.filter2D(next_image, -1, kernel)
     # create diff image
-    diff_image = cv2.absdiff(blurred_image, blurred_next_image)
+    diff_image = cv2.absdiff(image, next_image)
     # # filter noise from image distortions
-    # m = n = 5
-    # kernel = np.ones((m, n), np.float32) / (m * n)
-    # blurred_diff_image = cv2.filter2D(diff_image, -1, kernel)
-    return diff_image
+    m = n = 5
+    kernel = np.ones((m, n), np.float32) / (m * n)
+    blurred_diff_image = cv2.filter2D(diff_image, -1, kernel)
+    return blurred_diff_image
 
 
 def get_corners(image):
-    corners = cv2.goodFeaturesToTrack(image, 640, 0.001, 0, mask=None, blockSize=3, useHarrisDetector=1, k=0.06)
-    print('corners:', len(corners))
+    corners = cv2.goodFeaturesToTrack(image, 640, 0.0008, 1, mask=None, blockSize=3, useHarrisDetector=1, k=0.06)
     corners = corners[:, 0, :].astype(int)
     return corners
 
 
-def get_mask(point):
-    x, y = point
-    mask_radius = 10
-    mask = np.zeros(shape=(600, 800), dtype=np.uint8)
-    cv2.circle(mask, (x, y), mask_radius, 1, cv2.FILLED)
-    cv2.circle(dbg_next_image, (x, y), 10, (0, 255, 255))  # debug
-    return mask
+def line_frame_intersection(line, frame):
+    def perp(a):
+        b = np.empty_like(a)
+        b[0] = -a[1]
+        b[1] = a[0]
+        return b
 
+    def seg_intersect(a1, da, b1, db):
+        dp = a1 - b1
+        dap = perp(da)
+        denom = np.dot(dap, db)
+        num = np.dot(dap, dp)
+        return (num / denom.astype(float)) * db + b1
 
-def get_corners_in_mask(image, mask):
-    corners = cv2.goodFeaturesToTrack(image, 640, 0.05, 0, mask=mask, blockSize=3, useHarrisDetector=1, k=0.06)
-    if corners is not None:
-        print('corners:', len(corners))
-        corners = corners[:, 0, :].astype(int)
-    return corners
+    rows, cols = frame
 
+    rect_lines = [
+        # vx, vy, x0, y0
+        [1, 0, 0, 0],
+        [1, 0, 0, cols - 1],
+        [0, 1, 0, 0],
+        [0, 1, rows - 1, 0]
+    ]
 
-def filter_distant_corners(corners):
-    # TODO: don't use mean, but something else to get where most of the points are
-    mean_corners = np.mean(corners, axis=0)
-    mean_x, mean_y = mean_corners.ravel()
+    points = []
 
-    # debug
-    cv2.rectangle(dbg_next_image, (int(mean_x)-150, int(mean_y)-100), (int(mean_x)+150, int(mean_y)+100), (255, 0, 0))
+    for rect_line in rect_lines:
+        px, py = seg_intersect(np.array([rect_line[2], rect_line[3]]), np.array([rect_line[0], rect_line[1]]),
+                               np.array([line[2], line[3]]), np.array([line[0], line[1]])).astype(int)
+        if rect_line[0] and 0 <= px < rows or rect_line[1] and 0 <= py < cols:
+            points.append((px, py))
 
-    corners_to_filter_out = []
-    for idx, corner in enumerate(corners):
-        corner_x, corner_y = corner.ravel()
-        # filter noise to only get dart arrow
-        if abs(mean_x - corner_x) > 150 or abs(mean_y - corner_y) > 100:
-            corners_to_filter_out.append(idx)
+    if len(points) != 2:
+        print(points)
 
-    corners_new = np.delete(corners, [corners_to_filter_out], axis=0)
-    return corners_new
+    return points
 
 
 def filter_corners_on_line(corners):
-    rows, cols = (800, 600)
-
-    corners_on_line, line1_r = _filter_corners_line(corners, rows, cols, cv2.DIST_WELSCH)
-    corners_on_line, line2_r = _filter_corners_line(corners_on_line, rows, cols, cv2.DIST_HUBER)
-
-    cv2.line(dbg_next_image, *line1_r, (127, 0, 127))  # debug
-    cv2.line(dbg_next_image, *line2_r, (255, 0, 255))  # debug
-
-    return corners_on_line
-
-
-def _filter_corners_line(corners, rows, cols, dist_func):
-    [vx, vy, x, y] = cv2.fitLine(corners, dist_func, 0, 0.1, 0.1)  # 5.0 if dist_func == cv2.DIST_WELSCH else 0
-    left_y = int((-x * vy / vx) + y)
-    right_y = int(((cols - x) * vy / vx) + y)
+    line = cv2.fitLine(corners, cv2.DIST_WELSCH, 0, 0.1, 0.1).ravel()
+    p1, p2 = line_frame_intersection(line, (800, 600))
 
     corners_to_filter_out = []
     for idx, corner in enumerate(corners):
-        corner_x, corner_y = corner.ravel()
         # check distance to fitted line, only draw corners within certain range
-        distance = dist(0, left_y, cols - 1, right_y, corner_x, corner_y)
-        if distance > 10:
+        distance = dist(*p1, *p2, *corner)
+        if distance > 20:
             corners_to_filter_out.append(idx)
 
+    cv2.line(dbg_next_image, p1, p2, (127, 0, 127))  # debug
+
     corners_final = np.delete(corners, [corners_to_filter_out], axis=0)  # delete corners to form new array
-    return corners_final, ((0, left_y), (cols-1, right_y))
+    return corners_final
+
+
+def filter_corners_of_flight(corners):
+    lowest = corners[np.argmin(corners[:, 1], axis=0)]
+    highest = corners[np.argmax(corners[:, 1], axis=0)]
+    diff_y = highest[1] - lowest[1]
+    mid_y = lowest[1] + 2 / 3 * diff_y
+
+    corners_to_filter_out = []
+    for idx, corner in enumerate(corners):
+        corner_y = corner.ravel()[1]
+        if corner_y > mid_y:
+            corners_to_filter_out.append(idx)
+
+    corners_without_flight = np.delete(corners, [corners_to_filter_out], axis=0)
+    return corners_without_flight
 
 
 def get_real_location(corners, mount):
-    if mount == "right":
-        idx = np.argmax(corners[:, 0], axis=0)
-    else:
-        idx = np.argmin(corners[:, 0], axis=0)
-
+    # if mount == "right":
+    #     idx = np.argmax(corners[:, 0], axis=0)
+    # else:
+    #     idx = np.argmin(corners[:, 0], axis=0)
+    idx = np.argmin(corners[:, 1], axis=0)
     return corners[idx]
 
 
-def dbg_draw_corners(corners_, close_corners, corners_on_line, corners_in_mask):
+def dbg_draw_corners(corners_, close_corners, corners_on_line):
     for corner in corners_[(corners_[:, None] != close_corners).any(-1).all(1)]:
-        cv2.circle(dbg_next_image, corner.ravel(), 2, (255, 0, 0), 2)  # blue
+        cv2.circle(dbg_next_image, corner.ravel(), 1, (255, 0, 0), 1)  # blue
     for corner in close_corners:
         cv2.circle(dbg_next_image, corner.ravel(), 1, (0, 255, 0), 1)  # green
     for corner in corners_on_line:
         cv2.circle(dbg_next_image, corner.ravel(), 1, (0, 0, 255), 1)  # red
-    for corner in corners_in_mask:
-        cv2.circle(dbg_next_image, corner.ravel(), 1, (0, 255, 255), 1)  # yellow
