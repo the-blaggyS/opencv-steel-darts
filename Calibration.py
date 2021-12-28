@@ -33,17 +33,15 @@ def calibrate(cam, mount):
     original_image = calibration_image
 
     is_calibrated = False
-    calibration_data = None
+    calibration_data = CalibrationData()
 
     while not is_calibrated:
         if os.path.isfile(calibration_data_file[mount]):  # if calibration data exists
-            calibration_data = restore_calibration_from_file(calibration_data_file[mount], calibration_image.copy())
-            if calibration_data:  # if user confirmed loaded calibration data
+            calibration_data = read_calibration_data(calibration_data_file[mount])
+            if confirm_calibration(calibration_data, calibration_image.copy()):
                 is_calibrated = True
-            else:  # if cam needs new calibration
-                os.remove(calibration_data_file[mount])
-        else:  # if no calibration data exists
-            calibration_data = start_calibration_process(calibration_image.copy())
+        if not is_calibrated:  # if no calibration data exists or current wasn't accepted
+            calibration_data = start_calibration_process(calibration_image.copy(), calibration_data)
             if calibration_data:
                 with open(calibration_data_file[mount], 'wb') as calibration_file:
                     pickle.dump(calibration_data, calibration_file, 0)
@@ -52,13 +50,12 @@ def calibrate(cam, mount):
     return calibration_data
 
 
-def start_calibration_process(image):
+def start_calibration_process(image, calibration_data):
     # 13/6: 0 | 6/10: 1 | 10/15: 2 | 15/2: 3 | 2/17: 4 | 17/3: 5 | 3/19: 6 | 19/7: 7 | 7/16: 8 | 16/8: 9 |
     # 8/11: 10 | 11/14: 11 | 14/9: 12 | 9/12: 13 | 12/5: 14 | 5/20: 15 | 20/1: 16 | 1/18: 17 | 18/4: 18 | 4/13: 19
     # top, bottom, left, right
     # 12/9, 2/15, 8/16, 13/4
-    calibration_data = CalibrationData()
-    calibration_data.transformation_matrix = manipulate_transformation_points(image, calibration_data)
+    calibration_data = manipulate_transformation_points(image, calibration_data)
 
     cv2.destroyAllWindows()
 
@@ -71,27 +68,26 @@ def start_calibration_process(image):
         return None
 
 
-def restore_calibration_from_file(file_name, image):
+def confirm_calibration(calibration_data, image):
+    transformed_image = cv2.warpPerspective(image.copy(), calibration_data.transformation_matrix, (800, 800))
+    overlaid_image = draw_board(transformed_image, calibration_data)
+
+    cv2.imshow('Confirm Calibration', overlaid_image)
+
+    user_input = cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    return user_input == ord('\r')  # enter
+
+
+def read_calibration_data(file_name):
     try:
         with open(file_name, 'rb') as calibration_file:
             calibration_data = pickle.load(calibration_file)
-
-        calibration_data.transformation_matrix = np.array(calibration_data.transformation_matrix)
-
-        transformed_image = cv2.warpPerspective(image.copy(), calibration_data.transformation_matrix, (800, 800))
-        overlaid_image = draw_board(transformed_image, calibration_data)
-
-        cv2.imshow('Confirm Calibration', overlaid_image)
-
-        user_input = cv2.waitKey(0)
-        if user_input != ord('\r'):  # enter
-            calibration_data.transformation_matrix = manipulate_transformation_points(image, calibration_data)
-
-        cv2.destroyAllWindows()
-        return calibration_data
-
     except EOFError as e:
         print(e)
+
+    calibration_data.transformation_matrix = np.array(calibration_data.transformation_matrix)
+    return calibration_data
 
 
 def manipulate_transformation_points(image, calibration_data):
@@ -99,7 +95,7 @@ def manipulate_transformation_points(image, calibration_data):
     def nothing(x):
         pass
 
-    slider_count = 400
+    slider_count = 500
 
     cv2.namedWindow('image', cv2.WINDOW_NORMAL)
 
@@ -123,7 +119,8 @@ def manipulate_transformation_points(image, calibration_data):
             break
 
     calibration_data.offsets = offsets
-    return transformation_matrix
+    calibration_data.transformation_matrix = transformation_matrix
+    return calibration_data
 
 
 def transformation(image, calibration_data, p1, p2, p3, p4):
