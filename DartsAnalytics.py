@@ -120,6 +120,7 @@ def generate_heatmap(darts):
 def main(darts):
     count_scores(last_game(darts))
     average(last_game(darts))
+    average(darts)
     draw_darts_map(last_game(darts))
     correctly_detected(last_game(darts))
     correctly_detected(today(darts))
@@ -129,6 +130,7 @@ def main(darts):
     count_scores(today([dart for dart in darts if int(dart['base']) in (5, 20, 1) and dart['correctly_detected'] == 'True']))
     # draw_darts_map(today([dart for dart in darts if int(dart['base']) in (5, 20, 1) and dart['correctly_detected'] == 'True']))
     generate_heatmap([dart for dart in darts if int(dart['base']) != 0 and dart['correctly_detected'] == 'True'])
+    draw_darts_map(darts)
 
 
 if __name__ == '__main__':
