@@ -1,24 +1,20 @@
-import math
 import os
 import pickle
 from time import sleep
+from typing import Optional
 
 import cv2
+import math
 import numpy as np
 
-from Classes import CalibrationData
-from Draw import draw_board
-from VideoCapture import VideoStream
+from server.classes import CalibrationData, Image, Point
+from server.draw import draw_board
+from server.video_capture import VideoStream
 
-original_image = np.empty_like
+original_image: Image
 
 
-def calibrate(cam, mount):
-    calibration_data_file = {
-        'right': 'tmp/calibration_data_r.pkl',
-        'left': 'tmp/calibration_data_l.pkl'
-    }
-
+def calibrate(cam: VideoStream) -> Optional[CalibrationData]:
     try:
         cam.start()
         sleep(1)
@@ -33,24 +29,24 @@ def calibrate(cam, mount):
     original_image = calibration_image
 
     is_calibrated = False
-    calibration_data = CalibrationData()
+    calibration_data = CalibrationData(calibration_image.shape)
 
     while not is_calibrated:
-        if os.path.isfile(calibration_data_file[mount]):  # if calibration data exists
-            calibration_data = read_calibration_data(calibration_data_file[mount])
-            if confirm_calibration(calibration_data, calibration_image.copy()):
+        if os.path.isfile('../tmp/calibration_data.pkl'):  # if calibration data exists
+            calibration_data = read_calibration_data('../tmp/calibration_data.pkl')
+            if confirm_calibration(calibration_image.copy(), calibration_data):
                 is_calibrated = True
         if not is_calibrated:  # if no calibration data exists or current wasn't accepted
             calibration_data = start_calibration_process(calibration_image.copy(), calibration_data)
             if calibration_data:
-                with open(calibration_data_file[mount], 'wb') as calibration_file:
+                with open('../tmp/calibration_data.pkl', 'wb') as calibration_file:
                     pickle.dump(calibration_data, calibration_file, 0)
                 is_calibrated = True
 
     return calibration_data
 
 
-def start_calibration_process(image, calibration_data):
+def start_calibration_process(image: Image, calibration_data: CalibrationData) -> Optional[CalibrationData]:
     # 13/6: 0 | 6/10: 1 | 10/15: 2 | 15/2: 3 | 2/17: 4 | 17/3: 5 | 3/19: 6 | 19/7: 7 | 7/16: 8 | 16/8: 9 |
     # 8/11: 10 | 11/14: 11 | 14/9: 12 | 9/12: 13 | 12/5: 14 | 5/20: 15 | 20/1: 16 | 1/18: 17 | 18/4: 18 | 4/13: 19
     # top, bottom, left, right
@@ -68,18 +64,18 @@ def start_calibration_process(image, calibration_data):
         return None
 
 
-def confirm_calibration(calibration_data, image):
-    transformed_image = cv2.warpPerspective(image.copy(), calibration_data.transformation_matrix, (800, 800))
-    overlaid_image = draw_board(transformed_image, calibration_data)
+def confirm_calibration(image: Image, calibration_data: CalibrationData) -> bool:
+    transformed_image = cv2.warpPerspective(image.copy(), calibration_data.transformation_matrix, image.shape[1::-1])
+    draw_board(transformed_image, calibration_data)
 
-    cv2.imshow('Confirm Calibration', overlaid_image)
+    cv2.imshow('Confirm Calibration', transformed_image)
 
     user_input = cv2.waitKey(0)
     cv2.destroyAllWindows()
     return user_input == ord('\r')  # enter
 
 
-def read_calibration_data(file_name):
+def read_calibration_data(file_name: str) -> CalibrationData:
     try:
         with open(file_name, 'rb') as calibration_file:
             calibration_data = pickle.load(calibration_file)
@@ -90,19 +86,19 @@ def read_calibration_data(file_name):
     return calibration_data
 
 
-def manipulate_transformation_points(image, calibration_data):
+def manipulate_transformation_points(image: Image, calibration_data: CalibrationData) -> CalibrationData:
 
-    def nothing(x):
+    def nothing(_):
         pass
 
-    slider_count = 500
+    slider_count = int(max(calibration_data.image_shape) / 2)
 
     cv2.namedWindow('image', cv2.WINDOW_NORMAL)
 
     for i in range(4):
         for j, xy in enumerate(['x', 'y']):
             cv2.createTrackbar(f'p{i+1}_{xy}', 'image', 0, slider_count, nothing)
-            cv2.setTrackbarPos(f'p{i+1}_{xy}', 'image', int(slider_count/2) + calibration_data.offsets[i][j])
+            cv2.setTrackbarPos(f'p{i+1}_{xy}', 'image', int(slider_count/2 + calibration_data.offsets[i][j]))
 
     while True:
         offsets = []
@@ -123,36 +119,38 @@ def manipulate_transformation_points(image, calibration_data):
     return calibration_data
 
 
-def transformation(image, calibration_data, p1, p2, p3, p4):
+def transformation(image: Image, calibration_data: CalibrationData, p1: Point, p2: Point, p3: Point, p4: Point) -> (np.array, Image):
     points = calibration_data.points
     new_points = list(map(lambda p: destination_point(p, calibration_data),  calibration_data.dst_points))
 
     # create transformation matrix
-    src = np.array([(points[0][0] + p1[0], points[0][1] + p1[1]), (points[1][0] + p2[0], points[1][1] + p2[1]),
-                    (points[2][0] + p3[0], points[2][1] + p3[1]), (points[3][0] + p4[0], points[3][1] + p4[1])],
-                   np.float32)
+    src = np.array(list(map(sum, zip(points, [p1, p2, p3, p4]))), np.float32)
+    # src = np.array([
+    #     (points[0].x + p1.x, points[0].y + p1.y),
+    #     (points[1].x + p2.x, points[1].y + p2.y),
+    #     (points[2].x + p3.x, points[2].y + p3.y),
+    #     (points[3].x + p4.x, points[3].y + p4.y)
+    #     map(sum, zip(points, [p1, p2, p3, p4]))
+    # ], np.float32)
     dst = np.array(new_points, np.float32)
     transformation_matrix = cv2.getPerspectiveTransform(src, dst)
 
-    image = cv2.warpPerspective(image, transformation_matrix, (800, 800))
-    image = draw_board(image, calibration_data)
+    transformed_image = cv2.warpPerspective(image.copy(), transformation_matrix, image.shape[1::-1])
+    draw_board(transformed_image, calibration_data)
 
     for point in new_points:
-        cv2.circle(image, list(map(int, point[:2])), 2, (255, 255, 0), 2, 4)
+        cv2.circle(transformed_image, point.astype(int), 2, (255, 255, 0), 2, 4)
 
-    return transformation_matrix, image
+    return transformation_matrix, transformed_image
 
 
-def destination_point(i, calibration_data):
-    dst_point = [
-        (calibration_data.center_dartboard[0] + calibration_data.ring_radius[5] * math.cos((0.5 + i) * calibration_data.sector_angle)),
-        (calibration_data.center_dartboard[1] + calibration_data.ring_radius[5] * math.sin((0.5 + i) * calibration_data.sector_angle))
-    ]
-    return dst_point
+def destination_point(i: int, calibration_data: CalibrationData) -> Point:
+    return Point(calibration_data.center_dartboard[0] + calibration_data.ring_radii[5] * math.cos((0.5 + i) * calibration_data.sector_angle),
+                 calibration_data.center_dartboard[1] + calibration_data.ring_radii[5] * math.sin((0.5 + i) * calibration_data.sector_angle))
 
 
 if __name__ == '__main__':
     print('Welcome to darts!')
-    cam_r = VideoStream(src=1)
-    cam_r.start()
-    calibrate(cam_r, mount='right')
+    main_cam = VideoStream(src=1)
+    main_cam.start()
+    calibrate(main_cam)

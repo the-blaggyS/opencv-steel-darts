@@ -7,7 +7,7 @@ Watch a demo of the original setup here: https://www.youtube.com/playlist?list=P
 
 Detected darts with score mapping and a Test-GUI to play simple 501:
 
-![Detection](Bilder/Darts_Detection_NEW.png) ![GUI](Bilder/GAME_Recognition.jpeg)
+![Detection](pictures/Darts_Detection_NEW.png) ![GUI](pictures/GAME_Recognition.jpeg)
 
 I would like to point to this project as well. Two camera system but placed at the side of the board using triangulation:
 https://github.com/vassdoki/opencv-darts
@@ -38,7 +38,7 @@ The transformation works like that (reading from right to left):
 
 ### Calibrated board
 
-![ellipse-circle](Bilder/Dartboard_Calibration.jpg)
+![ellipse-circle](pictures/Dartboard_Calibration.jpg)
 
 ## Darts Detection
 
@@ -46,4 +46,4 @@ The transformation works like that (reading from right to left):
 
 ## Lighting and Camera placement
 
-![ellipse-circle](Bilder/Lighting.jpg)
+![ellipse-circle](pictures/Lighting.jpg)

@@ -1,6 +1,6 @@
-numpy~=1.21.3
-opencv
-python-dateutil~=2.8.2
-
-matplotlib~=3.4.3
-pyheatmap~=0.1.12
+opencv-python
+numpy
+matplotlib
+python-dateutil
+pyheatmap
+flask

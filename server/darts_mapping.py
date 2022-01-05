@@ -1,30 +1,24 @@
-import math
-
 import cv2
+import math
 import numpy as np
 
-from Classes import Dart
+from server.classes import CalibrationData, Dart, Point
 
 
-def get_transformed_location(x_coord, y_coord, calibration_data):
+def get_transformed_location(location: Point, calibration_data: CalibrationData) -> Point:
     # transform only the hit point with the saved transformation matrix
-    # ToDo: idea for second camera -> transform complete image and overlap both images to find dart location?
-    dart_loc_temp = np.array([[x_coord, y_coord]], dtype="float32")
-    dart_loc_temp = np.array([dart_loc_temp])
-    dart_loc = cv2.perspectiveTransform(dart_loc_temp, calibration_data.transformation_matrix)
-    new_dart_loc = tuple(dart_loc.reshape(1, -1)[0])
-
-    return new_dart_loc
+    dart_loc = cv2.perspectiveTransform(np.array([[location]]), calibration_data.transformation_matrix)
+    transformed_dart_loc = dart_loc.reshape(1, -1)[0]
+    return Point.cast(transformed_dart_loc)
 
 
 # Returns dartThrow (score, multiplier, angle, magnitude) based on x,y location
-def get_dart_region(dart_loc, calibration_data):
-    height = 800
-    width = 800
+def get_dart_region(dart_loc: Point, calibration_data: CalibrationData) -> Dart:
+    frame = calibration_data.image_shape
 
     # find the magnitude and angle of the dart
-    vx = dart_loc[0] - width / 2
-    vy = height / 2 - dart_loc[1]
+    vx = dart_loc[0] - frame.width / 2
+    vy = frame.height / 2 - dart_loc[1]
 
     # reference angle for atan2 conversion
     ref_angle = 81
@@ -41,9 +35,9 @@ def get_dart_region(dart_loc, calibration_data):
         base = -1
 
     # Calculating multiplier (and special cases for Bull's Eye):
-    for i in range(0, len(calibration_data.ring_radius)):
+    for i in range(0, len(calibration_data.ring_radii)):
         # Find the ring that encloses the dart
-        if magnitude <= calibration_data.ring_radius[i]:
+        if magnitude <= calibration_data.ring_radii[i]:
             if i == 0:  # Double Bull's Eye
                 base = 25
                 multiplier = 2
@@ -62,6 +56,4 @@ def get_dart_region(dart_loc, calibration_data):
         base = 0
         multiplier = 0
 
-    dart = Dart(base, multiplier, magnitude, angle)
-
-    return dart
+    return Dart(base, multiplier, magnitude, angle)
